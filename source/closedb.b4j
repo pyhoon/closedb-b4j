@@ -1,0 +1,72 @@
+﻿AppType=StandardJava
+Build1=Default,com.puterise.closedb
+Group=Default Group
+Library1=jcore
+Library2=jsql
+NumberOfFiles=0
+NumberOfLibraries=2
+NumberOfModules=0
+Version=10.5
+@EndOfDesignText@
+#Region Project Attributes
+' Product: CloseDB
+' Version: 1.00
+' License: MIT License
+' Developer: Poon Yip Hoon (Aeric)
+#CommandLineArgs:
+#MergeLibraries: True 
+#AdditionalJar: sqlite-jdbc-3.7.2
+#End Region
+#Region Macros
+'#Macro: Title, Build only, ide://run?File=%B4X%\B4JBuilder.exe&Args=-Task%3DBuild&Args=-BaseFolder%3D..&Args=-Obfuscate=False&Args=-Output%3D%PROJECT_NAME%
+#Macro: Title, Copy to Release, ide://run?File=%COMSPEC%&Args=/c&Args=copy&Args=%PROJECT_NAME%.jar&Args=%PROJECT%\..\release\%PROJECT_NAME%.jar
+#Macro: Title, Release folder, ide://run?File=%WINDIR%\SysWOW64\explorer.exe&Args=%PROJECT%\..\release
+#End Region
+#If Release
+' Copy to B4J Additional Libraries directory
+#CustomBuildAction: 2, %COMSPEC%, /c copy %PROJECT_NAME%.jar %ADDITIONAL%\%PROJECT_NAME%.jar
+#End If
+Sub Process_Globals
+
+End Sub
+
+'Set sqlite journal mode to delete
+'References:
+'https://www.b4x.com/android/forum/threads/b4x-sql-setting-the-journal-mode.136211/
+'https://www.b4x.com/android/forum/threads/webapp-concurrent-access-to-sqlite-databases.39904/
+Sub AppStart (Args() As String)
+	Log("closedb v1.00 started.")
+	Dim DBDir As String
+	Dim DBFile As String
+	If Args.Length > 0 Then
+		DBDir = File.GetFileParent(Args(0))
+		DBFile = File.GetName(Args(0))
+	Else
+		Dim cfg As Map = File.ReadMap(File.DirApp, "sqlite.ini")
+		DBDir = cfg.Get("DbDir")
+		DBFile = cfg.Get("DbFile")
+	End If
+	If File.Exists(DBDir, DBFile) Then
+		'Log("opening db...")
+		Try
+			Dim SQL1 As SQL
+			SQL1.InitializeSQLite(DBDir, DBFile, False)
+			Dim mode As String = SQL1.ExecQuerySingleResult("PRAGMA journal_mode")
+			Log("db mode: " & mode)
+			If mode <> "delete" Then
+				Log("setting db mode to delete...")
+				SQL1.ExecQuerySingleResult("PRAGMA journal_mode = delete")
+				'Dim mode As String = SQL1.ExecQuerySingleResult("PRAGMA journal_mode")
+				'Log("db mode set to " & mode)
+			End If
+			'Log($"closing db (${File.Combine(DBDir, DBFile)})..."$)
+			SQL1.Close
+			'Log("db closed")
+		Catch
+			Log(LastException.Message)
+		End Try
+	Else
+		Log("db not found.")
+	End If
+	Log("closedb ended.")
+End Sub
